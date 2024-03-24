@@ -198,11 +198,11 @@ if __name__ == '__main__':
   if (args.name):
     name = args.name
   else:
-    name = raw_input('Name: ')
+    name = input('Name: ')
   if (args.email):
     email = args.email
   else:
-    email = raw_input('Email: ')
+    email = input('Email: ')
   if (args.date):
     if(args.date == "0"):
       print("Timestamp of 0 is not valid, please choose at least 1")
@@ -217,12 +217,12 @@ if __name__ == '__main__':
   else:
     # Assume if they forget name or email, they probably should be asked about writing to cards
     if (not args.email or not args.name):
-      if(raw_input('Write keys to card? [y/n]: ') == 'y'):
+      if(input('Write keys to card? [y/n]: ') == 'y'):
         card_write = True
   if (args.seed_phrase):
     seed = args.seed_phrase
   else:
-    seed = raw_input('Seed: ')
+    seed = input('Seed: ')
   user_id = '%s <%s>' % (name, email)
 
   # CA masterkey is sha256 of input seed, and the three subkeys are recursive sha256 hashes of that
