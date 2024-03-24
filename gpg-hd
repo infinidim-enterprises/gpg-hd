@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-# Special thanks to Arttu Kasvio's idea of using pem2openpgp / HMAC_DRBG
-
 import os
+import shutil
+from pathlib import Path
 import subprocess
 import sys
 from Crypto.PublicKey import RSA
@@ -106,8 +106,7 @@ def GPG_create_key(user_id, seed, timestamp):
   pem2openpgp = subprocess.Popen(['pem2openpgp', user_id], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
   gpg_key = pem2openpgp.communicate(rsa_key.exportKey(pkcs=1))[0]
 
-  os.system("mkdir -p temp && chmod 700 -R temp")
-  os.environ['GNUPGHOME'] = "temp"
+  setup_gnupghome()
 
   # Import openPGP-formatted RSA key into GPG keychain
   gpg_import = subprocess.Popen(gpg_cmdline + "--import", stdin=subprocess.PIPE, shell=True)
@@ -171,6 +170,12 @@ def GPG_export_keychain(keyID, timestamp, private_filename, public_filename, ssh
   sshfile.write(ssh_key)
   sshfile.close()
 
+def setup_gnupghome():
+  gnupg_home_dir = workdir / 'gnupghome.temp'
+  shutil.rmtree(gnupg_home_dir)
+  gnupg_home_dir.mkdir(parents=True, exist_ok=True)
+  gnupg_home_dir.chmod(0o700)
+  os.environ['GNUPGHOME'] = gnupg_home_dir
 
 if __name__ == '__main__':
   os.system("rm -rf temp *.asc keys/* > /dev/null 2>&1")
@@ -181,9 +186,15 @@ if __name__ == '__main__':
   parser.add_argument("-n", "--name", help="Full Name")
   parser.add_argument("-e", "--email", help="Email")
   parser.add_argument("-d", "--date", help="Key creation timestamp (in unix epoch time)")
+  parser.add_argument("-w", "--workdir", type=str, help="Directory for writing files")
   parser.add_argument("-c", "--card", help="Write subkeys to Yubikey", action="store_true")
   args = parser.parse_args()
 
+  if (args.workdir):
+    workdir = Path(args.workdir).resolve().absolute()
+  else:
+    # Default workdir ~/tmp
+    workdir = Path(os.path.join(Path.home(), 'tmp')).resolve().absolute()
   if (args.name):
     name = args.name
   else:
@@ -238,33 +249,32 @@ if __name__ == '__main__':
   GPG_add_enc_subkey(masterkeyID, keygrips.split('\n')[2], timestamp)
   GPG_add_sig_subkey(masterkeyID, keygrips.split('\n')[3], timestamp)
 
-  os.system("mkdir -p keys")
-  keys_path = os.path.join(os.path.dirname(__file__) , "keys")
-  GPG_export_keychain(masterkeyID, timestamp, \
-    os.path.join(keys_path, "private_keychain.asc"), \
-    os.path.join(keys_path, "public_keychain.asc"), \
-    os.path.join(keys_path, "ssh_key.asc") \
-    )
+  keys_path = workdir / 'keys'
+  keys_path.mkdir(parents=True, exist_ok=True)
+
+  private_keychain = keys_path / 'private_keychain.asc'
+  public_keychain = keys_path / 'public_keychain.asc'
+  ssh_key = keys_path / 'ssh_key.asc'
+
+  GPG_export_keychain(masterkeyID, timestamp, private_keychain, public_keychain, ssh_key.asc)
 
   # GPG is lame and doesn't like when we remove old keyIDs that are now attached to subkeys,
   # so lets start over with fresh keydb
-  os.system("rm -rf temp && mkdir -p temp && chmod 700 -R temp")
-  os.environ['GNUPGHOME'] = "temp"
+  setup_gnupghome()
 
-  GPG_import_keychain(os.path.join(keys_path, "private_keychain.asc"))
+  GPG_import_keychain(private_keychain)
 
   # just for show...
   print("\n\n\n")
   gpg_list = subprocess.Popen(gpg_cmdline + "--list-keys", shell=True)
   gpg_list.communicate()
   print("\n")
-  print(os.path.join(keys_path, "private_keychain.asc") + " Created\n")
-  print(os.path.join(keys_path, "public_keychain.asc") + " Created\n")
-  print(os.path.join(keys_path, "ssh_key.asc") + " Created\n")
+  print(private_keychain + " Created\n")
+  print(public_keychain + " Created\n")
+  print(ssh_key + " Created\n")
 
   if(card_write):
     gpg_card_factory_reset()
     GPG_card_write(masterkeyID)
 
-  os.system("rm -rf temp")
-  
+  # os.system("rm -rf temp")
