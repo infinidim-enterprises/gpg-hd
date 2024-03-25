@@ -172,7 +172,7 @@ def GPG_export_keychain(keyID, timestamp, private_filename, public_filename, ssh
 
 def setup_gnupghome():
   gnupg_home_dir = workdir / 'gnupghome.temp'
-  shutil.rmtree(gnupg_home_dir)
+  shutil.rmtree(gnupg_home_dir, ignore_errors=True)
   gnupg_home_dir.mkdir(parents=True, exist_ok=True)
   gnupg_home_dir.chmod(0o700)
   os.environ['GNUPGHOME'] = gnupg_home_dir
