@@ -95,7 +95,7 @@ def GPG_create_key(user_id, seed, timestamp):
   pem2openpgp = subprocess.Popen(['pem2openpgp', user_id], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
   gpg_key = pem2openpgp.communicate(rsa_key.exportKey(pkcs=1))[0]
 
-  setup_gnupghome()
+  # setup_gnupghome()
 
   # Import openPGP-formatted RSA key into GPG keychain
   gpg_import = subprocess.Popen(gpg_cmdline + "--import", stdin=subprocess.PIPE, shell=True)
@@ -213,6 +213,8 @@ if __name__ == '__main__':
   shutil.rmtree(workdir, ignore_errors=True)
   workdir.mkdir(parents=True, exist_ok=True)
   os.chdir(workdir)
+
+  setup_gnupghome()
 
   # CA masterkey is sha256 of input seed, and the three subkeys are recursive sha256 hashes of that
   masterkey_hash = hashlib.sha256(seed.encode()).hexdigest().encode()
