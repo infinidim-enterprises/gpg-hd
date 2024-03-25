@@ -249,7 +249,7 @@ if __name__ == '__main__':
 
   GPG_export_keychain(masterkeyID, timestamp, private_keychain, public_keychain, ssh_key)
   setup_gnupghome()
-  GPG_import_keychain(private_keychain)
+  GPG_import_keychain(str(private_keychain))
 
   gpg_list = subprocess.Popen(gpg_cmdline + "--list-keys", shell=True)
   gpg_list.communicate()
