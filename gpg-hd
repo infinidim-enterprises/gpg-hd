@@ -146,12 +146,12 @@ def GPG_export_keychain(keyID, timestamp, private_filename, public_filename, ssh
 
   # Export SSH public key to file
   # Fake time necessary if key is already expired
-  export = subprocess.Popen(gpg_cmdline + "--faked-system-time=" + timestamp +  \
-    " --export-ssh-key " + keyID, stdout=subprocess.PIPE, shell=True)
-  ssh_key = export.communicate()[0].decode('utf-8')
-  sshfile = open(ssh_filename, "w")
-  sshfile.write(ssh_key)
-  sshfile.close()
+  # export = subprocess.Popen(gpg_cmdline + "--faked-system-time=" + timestamp +  \
+  #   " --export-ssh-key " + keyID, stdout=subprocess.PIPE, shell=True)
+  # ssh_key = export.communicate()[0].decode('utf-8')
+  # sshfile = open(ssh_filename, "w")
+  # sshfile.write(ssh_key)
+  # sshfile.close()
 
 def setup_gnupghome():
   shutil.rmtree(gnupg_home_dir, ignore_errors=True)
@@ -254,9 +254,9 @@ if __name__ == '__main__':
   gpg_list = subprocess.Popen(gpg_cmdline + "--list-keys", shell=True)
   gpg_list.communicate()
 
-  print(private_keychain + " Created\n")
-  print(public_keychain + " Created\n")
-  print(ssh_key + " Created\n")
+  print(str(private_keychain) + " Created\n")
+  print(str(public_keychain) + " Created\n")
+  # print(str(ssh_key) + " Created\n")
 
   if(card_write):
     gpg_card_factory_reset()
