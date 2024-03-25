@@ -175,10 +175,10 @@ def setup_gnupghome():
   shutil.rmtree(gnupg_home_dir, ignore_errors=True)
   gnupg_home_dir.mkdir(parents=True, exist_ok=True)
   gnupg_home_dir.chmod(0o700)
-  os.environ['GNUPGHOME'] = gnupg_home_dir
+  os.environ['GNUPGHOME'] = str(gnupg_home_dir)
 
 if __name__ == '__main__':
-  os.system("rm -rf temp *.asc keys/* > /dev/null 2>&1")
+  # os.system("rm -rf temp *.asc keys/* > /dev/null 2>&1")
   os.system("killall gpg-agent scdaemon ssh-agent > /dev/null 2>&1")
   print("\n")
   parser = argparse.ArgumentParser()
@@ -194,7 +194,7 @@ if __name__ == '__main__':
     workdir = Path(args.workdir).resolve().absolute()
   else:
     # Default workdir ~/tmp
-    workdir = Path(os.path.join(Path.home(), 'tmp')).resolve().absolute()
+    workdir = (Path.home() / 'tmp').resolve().absolute()
   if (args.name):
     name = args.name
   else:
@@ -224,6 +224,10 @@ if __name__ == '__main__':
   else:
     seed = input('Seed: ')
   user_id = '%s <%s>' % (name, email)
+
+  shutil.rmtree(workdir, ignore_errors=True)
+  workdir.mkdir(parents=True, exist_ok=True)
+  os.chdir(workdir)
 
   # CA masterkey is sha256 of input seed, and the three subkeys are recursive sha256 hashes of that
   masterkey_hash = hashlib.sha256(seed.encode()).hexdigest().encode()
