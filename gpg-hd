@@ -12,9 +12,6 @@ import hashlib
 from hmac_drbg import *
 import argparse
 
-gpg_cmdline = "gpg --homedir temp --keyring trustedkeys.gpg --no-default-keyring --expert "
-subkey_cmdline = " --command-fd=0 --status-fd=1 --pinentry-mode=loopback --edit-key "
-
 def GPG_get_masterkey():
   id = subprocess.Popen(gpg_cmdline + "--list-keys | " \
     "tail -n +3 | awk \'{ print $1 }\' | grep -v \"pub\" | grep -v \"uid\" | tr -s \'\\n\' \'\\n\'", \
@@ -23,7 +20,6 @@ def GPG_get_masterkey():
     shell=True \
     )
   return id.communicate()[0].decode('utf-8')
-
 
 def GPG_get_keygrips():
   # Get keygrips
@@ -35,7 +31,6 @@ def GPG_get_keygrips():
     )
   return kg.communicate()[0].decode('utf-8')
 
-
 def GPG_set_primary_key(keyID):
   # Set masterkey as primary
   child = pexpect.spawn( \
@@ -43,7 +38,6 @@ def GPG_set_primary_key(keyID):
     + gpg_cmdline + subkey_cmdline + keyID \
     )
   child.interact()
-
 
 def GPG_add_auth_subkey(parent_keyID, subkey_grip, timestamp):
   # Auth subkey
@@ -55,7 +49,6 @@ def GPG_add_auth_subkey(parent_keyID, subkey_grip, timestamp):
   child.send(subkey_grip + "\r")
   child.interact()
 
-
 def GPG_add_enc_subkey(parent_keyID, subkey_grip, timestamp):
   # Enc subkey
   child = pexpect.spawn( \
@@ -65,7 +58,6 @@ def GPG_add_enc_subkey(parent_keyID, subkey_grip, timestamp):
   child.expect (["Enter the keygrip: ", pexpect.EOF, pexpect.TIMEOUT])
   child.send(subkey_grip + "\r")
   child.interact()
-
 
 def GPG_add_sig_subkey(parent_keyID, subkey_grip, timestamp):
   # Sig subkey
@@ -77,11 +69,9 @@ def GPG_add_sig_subkey(parent_keyID, subkey_grip, timestamp):
   child.send(subkey_grip + "\r")
   child.interact()
 
-
 def GPG_import_keychain(keychain_filename):
     gpg_import = subprocess.Popen(gpg_cmdline + "--import " + keychain_filename, stdout=subprocess.PIPE, shell=True)
     print(gpg_import.communicate())
-
 
 def gpg_card_factory_reset():
   input("WARNING: This will reset yubikey and provision it with new GPG keys.  Press any-key to continue (or CTRL+C to abort)")
@@ -93,7 +83,6 @@ def gpg_card_factory_reset():
     )
   gpg.communicate()[0]
   os.system("killall gpg-agent scdaemon ssh-agent > /dev/null 2>&1")
-
 
 def GPG_create_key(user_id, seed, timestamp):
   # Create deterministic raw GPG key
@@ -112,15 +101,10 @@ def GPG_create_key(user_id, seed, timestamp):
   gpg_import = subprocess.Popen(gpg_cmdline + "--import", stdin=subprocess.PIPE, shell=True)
   gpg_import.communicate(gpg_key)
 
-
 def gpg_card_wakeup():
   # Stupid hack because GPG is dumb
-  gpg = subprocess.Popen( \
-    gpg_cmdline + " --card-status", \
-    shell=True \
-    )
+  gpg = subprocess.Popen(gpg_cmdline + "--card-status", shell=True)
   gpg.communicate()[0]
-
 
 def GPG_card_write(keyID):
   cmd_line = gpg_cmdline + "--pinentry-mode=loopback --command-fd=0 --status-fd=1 --edit-key " + keyID
@@ -129,21 +113,20 @@ def GPG_card_write(keyID):
   print("line: ", "bash -c \"{ echo key 1; echo keytocard; echo 3; echo '" \
     + adminpin + "'; echo '" + adminpin + "'; echo 'save'; echo q; } | " + cmd_line)
 
-  #Write Auth key to card
+  # Write Auth key to card
   child = pexpect.spawn("bash -c \"{ echo key 1; echo keytocard; echo 3; echo '" \
     + adminpin + "'; echo '" + adminpin + "'; echo 'save'; echo q; } | " + cmd_line)
   child.interact()
 
-  #Write Enc key to card
+  # Write Enc key to card
   child = pexpect.spawn("bash -c \"{ echo key 2; echo keytocard; echo 2; echo '" \
     + adminpin + "'; echo '" + adminpin + "'; echo 'save'; echo q; } | " + cmd_line)
   child.interact()
 
-  #Write Sig key to card
+  # Write Sig key to card
   child = pexpect.spawn("bash -c \"{ echo key 3; echo keytocard; echo 1; echo '" \
     + adminpin + "'; echo '" + adminpin + "'; echo 'save'; echo q; } | " + cmd_line)
   child.interact()
-
 
 def GPG_export_keychain(keyID, timestamp, private_filename, public_filename, ssh_filename):
   # Export full private keychain to file
@@ -171,14 +154,12 @@ def GPG_export_keychain(keyID, timestamp, private_filename, public_filename, ssh
   sshfile.close()
 
 def setup_gnupghome():
-  gnupg_home_dir = workdir / 'gnupghome.temp'
   shutil.rmtree(gnupg_home_dir, ignore_errors=True)
   gnupg_home_dir.mkdir(parents=True, exist_ok=True)
   gnupg_home_dir.chmod(0o700)
   os.environ['GNUPGHOME'] = str(gnupg_home_dir)
 
 if __name__ == '__main__':
-  # os.system("rm -rf temp *.asc keys/* > /dev/null 2>&1")
   os.system("killall gpg-agent scdaemon ssh-agent > /dev/null 2>&1")
   print("\n")
   parser = argparse.ArgumentParser()
@@ -225,6 +206,10 @@ if __name__ == '__main__':
     seed = input('Seed: ')
   user_id = '%s <%s>' % (name, email)
 
+  gnupg_home_dir = workdir / 'gnupghome.temp'
+  gpg_cmdline = "gpg --homedir %s --keyring trustedkeys.gpg --no-default-keyring --expert " % (gnupg_home_dir)
+  subkey_cmdline = " --command-fd=0 --status-fd=1 --pinentry-mode=loopback --edit-key "
+
   shutil.rmtree(workdir, ignore_errors=True)
   workdir.mkdir(parents=True, exist_ok=True)
   os.chdir(workdir)
@@ -260,19 +245,13 @@ if __name__ == '__main__':
   public_keychain = keys_path / 'public_keychain.asc'
   ssh_key = keys_path / 'ssh_key.asc'
 
-  GPG_export_keychain(masterkeyID, timestamp, private_keychain, public_keychain, ssh_key.asc)
-
-  # GPG is lame and doesn't like when we remove old keyIDs that are now attached to subkeys,
-  # so lets start over with fresh keydb
+  GPG_export_keychain(masterkeyID, timestamp, private_keychain, public_keychain, ssh_key)
   setup_gnupghome()
-
   GPG_import_keychain(private_keychain)
 
-  # just for show...
-  print("\n\n\n")
   gpg_list = subprocess.Popen(gpg_cmdline + "--list-keys", shell=True)
   gpg_list.communicate()
-  print("\n")
+
   print(private_keychain + " Created\n")
   print(public_keychain + " Created\n")
   print(ssh_key + " Created\n")
@@ -280,5 +259,3 @@ if __name__ == '__main__':
   if(card_write):
     gpg_card_factory_reset()
     GPG_card_write(masterkeyID)
-
-  # os.system("rm -rf temp")
